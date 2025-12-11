@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-SiliconFlow Ultimate Configuration Builder
-Dynamically fetches ALL models and builds complete configurations
+SiliconFlow Ultimate Configuration Builder with Performance Optimizations
+Dynamically fetches ALL models and builds optimized configurations
 """
 import json
 import requests
@@ -49,63 +49,58 @@ class SiliconFlowConfigBuilder:
     def _get_chat_params(self):
         """Extract all chat completion parameters from docs"""
         return {
-            "stream": {"type": "boolean", "default": False},
-            "max_tokens": {"type": "integer", "default": 4096},
-            "enable_thinking": {"type": "boolean", "default": False},
-            "thinking_budget": {"type": "integer", "range": [128, 32768], "default": 4096},
+            "stream": {"type": "boolean", "default": True},  # Optimized: Streaming enabled by default
+            "max_tokens": {"type": "integer", "default": 2048},  # Optimized: Lower default
+            "enable_thinking": {"type": "boolean", "default": False},  # Optimized: Disabled by default
+            "thinking_budget": {"type": "integer", "range": [128, 32768], "default": 1024},  # Optimized: Lower default
             "min_p": {"type": "float", "range": [0, 1], "default": 0.05},
             "stop": {"type": "array", "default": []},
-            "temperature": {"type": "float", "default": 0.7},
-            "top_p": {"type": "float", "default": 0.7},
-            "top_k": {"type": "integer", "default": 50},
-            "frequency_penalty": {"type": "float", "default": 0.5},
+            "temperature": {"type": "float", "default": 0.3},  # Optimized: Lower for determinism
+            "top_p": {"type": "float", "default": 0.9},
+            "top_k": {"type": "integer", "default": 40},  # Optimized: Lower for speed
+            "frequency_penalty": {"type": "float", "default": 0.1},  # Optimized: Lower penalty
             "n": {"type": "integer", "default": 1},
             "response_format": {"type": "object", "default": {"type": "text"}},
             "tools": {"type": "array", "max_items": 128},
-            "tool_choice": {"type": "object", "default": {"type": "auto", "disable_parallel_tool_use": True}}
+            "tool_choice": {"type": "object", "default": {"type": "auto", "disable_parallel_tool_use": False}}  # Optimized: Allow parallel
         }
     
     def _get_embedding_params(self):
         """Extract embedding parameters"""
         return {
             "encoding_format": {"type": "string", "options": ["float", "base64"], "default": "float"},
-            "dimensions": {"type": "integer", "options": [64, 128, 256, 512, 768, 1024, 2048, 4096]}
+            "dimensions": {"type": "integer", "default": 768},  # Optimized: Lower dimensions for speed
+            "batch_size": {"type": "integer", "default": 32}  # Optimized: Added batch size
         }
     
     def _get_rerank_params(self):
         """Extract rerank parameters"""
         return {
-            "top_n": {"type": "integer", "default": 4},
+            "top_n": {"type": "integer", "default": 5},  # Optimized: Lower default
             "return_documents": {"type": "boolean", "default": True},
-            "max_chunks_per_doc": {"type": "integer"},
-            "overlap_tokens": {"type": "integer", "max": 80}
+            "max_chunks_per_doc": {"type": "integer", "default": 5},  # Optimized: Lower default
+            "overlap_tokens": {"type": "integer", "max": 80, "default": 50}
         }
     
     def _get_image_params(self):
         """Image generation parameters (inferred structure)"""
         return {
-            "size": {"type": "string", "options": ["256x256", "512x512", "1024x1024"]},
-            "quality": {"type": "string", "options": ["standard", "hd"]},
-            "style": {"type": "string", "options": ["vivid", "natural"]}
+            "size": {"type": "string", "options": ["512x512", "1024x1024"], "default": "512x512"},  # Optimized: Smaller default
+            "quality": {"type": "string", "options": ["standard", "hd"], "default": "standard"},  # Optimized: Standard quality
+            "style": {"type": "string", "options": ["vivid", "natural"], "default": "natural"}
         }
     
     def fetch_all_models(self):
         """Fetch ALL models from SiliconFlow API with all types"""
         all_models = []
         
-        # Model types from documentation
-        model_types = ["text", "image", "audio", "video"]
-        model_subtypes = ["chat", "embedding", "reranker", "text-to-image", 
-                         "image-to-image", "speech-to-text", "text-to-video"]
-        
         print("🔄 Fetching models from SiliconFlow API...")
         
-        # Try to fetch all models (no filter)
         try:
             response = requests.get(
                 f"{self.base_url}/models",
                 headers=self.headers,
-                timeout=30
+                timeout=15  # Optimized: Lower timeout
             )
             
             if response.status_code == 200:
@@ -135,23 +130,32 @@ class SiliconFlowConfigBuilder:
         
         # Chat models from chat completions docs
         chat_models = [
-            "deepseek-ai/DeepSeek-R1", "deepseek-ai/DeepSeek-V3.2",
-            "Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-Coder-32B-Instruct",
-            "moonshotai/Kimi-K2-Instruct", "Qwen/Qwen2.5-VL-72B-Instruct",
-            "baidu/ERNIE-4.5-300B-A47B", "zai-org/GLM-4.6",
-            "tencent/Hunyuan-A13B-Instruct", "Qwen/Qwen3-235B-A22B-Instruct-2507"
+            "Qwen/Qwen2.5-7B-Instruct",  # Optimized: Fast model first
+            "Qwen/Qwen2.5-Coder-32B-Instruct",
+            "deepseek-ai/DeepSeek-V3.2",
+            "Qwen/Qwen2.5-72B-Instruct",
+            "moonshotai/Kimi-K2-Instruct",
+            "Qwen/Qwen2.5-VL-72B-Instruct",
+            "baidu/ERNIE-4.5-300B-A47B",
+            "zai-org/GLM-4.6",
+            "tencent/Hunyuan-A13B-Instruct",
+            "Qwen/Qwen3-235B-A22B-Instruct-2507"
         ]
         
         # Embedding models
         embedding_models = [
-            "Qwen/Qwen3-Embedding-8B", "Qwen/Qwen3-Embedding-4B",
-            "Qwen/Qwen3-Embedding-0.6B", "BAAI/bge-large-zh-v1.5"
+            "Qwen/Qwen3-Embedding-4B",  # Optimized: Medium size first
+            "Qwen/Qwen3-Embedding-8B",
+            "Qwen/Qwen3-Embedding-0.6B",
+            "BAAI/bge-large-zh-v1.5"
         ]
         
         # Reranker models
         reranker_models = [
-            "Qwen/Qwen3-Reranker-8B", "Qwen/Qwen3-Reranker-4B",
-            "Qwen/Qwen3-Reranker-0.6B", "BAAI/bge-reranker-v2-m3"
+            "Qwen/Qwen3-Reranker-4B",  # Optimized: Medium size first
+            "Qwen/Qwen3-Reranker-8B",
+            "Qwen/Qwen3-Reranker-0.6B",
+            "BAAI/bge-reranker-v2-m3"
         ]
         
         # Add all with placeholder objects
@@ -218,15 +222,59 @@ class SiliconFlowConfigBuilder:
                 model["category"] = "chat"
                 categorized["chat"].append(model)
         
+        # Sort by performance: smaller/faster models first
+        for category in categorized:
+            categorized[category] = self._sort_models_by_performance(categorized[category])
+        
         return categorized
     
+    def _sort_models_by_performance(self, models):
+        """Sort models by estimated performance (smaller/faster first)"""
+        def performance_score(model_id):
+            model_id_lower = model_id.lower()
+            score = 0
+            
+            # Smaller models get higher priority (negative weight)
+            if "0.6b" in model_id_lower or "0.6-b" in model_id_lower:
+                score -= 100
+            elif "1b" in model_id_lower or "1-b" in model_id_lower:
+                score -= 90
+            elif "4b" in model_id_lower or "4-b" in model_id_lower:
+                score -= 80
+            elif "7b" in model_id_lower or "7-b" in model_id_lower:
+                score -= 70
+            elif "8b" in model_id_lower or "8-b" in model_id_lower:
+                score -= 60
+            elif "14b" in model_id_lower or "14-b" in model_id_lower:
+                score -= 50
+            elif "32b" in model_id_lower or "32-b" in model_id_lower:
+                score -= 40
+            elif "72b" in model_id_lower or "72-b" in model_id_lower:
+                score -= 30
+            elif "235b" in model_id_lower or "235-b" in model_id_lower:
+                score -= 20
+            elif "480b" in model_id_lower or "480-b" in model_id_lower:
+                score -= 10
+            
+            # Prefer models with known good performance
+            if "qwen2.5-7b" in model_id_lower:
+                score += 5
+            if "qwen2.5-coder" in model_id_lower:
+                score += 3
+            if "deepseek-v3.2" in model_id_lower:
+                score += 2
+            
+            return score
+        
+        return sorted(models, key=lambda m: performance_score(m.get("id", "")))
+    
     def build_crush_config(self, categorized_models):
-        """Build comprehensive Crush configuration"""
+        """Build comprehensive Crush configuration with performance optimizations"""
         
         # Build provider configurations for each category
         providers = {}
         
-        # Chat Provider (Primary)
+        # Chat Provider (Primary) - Optimized for speed
         if categorized_models["chat"]:
             providers["siliconflow-chat"] = {
                 "name": "SiliconFlow Chat Models",
@@ -240,19 +288,24 @@ class SiliconFlowConfigBuilder:
                         "id": model["id"],
                         "name": self._format_model_name(model["id"]),
                         "context_window": self._infer_context_window(model["id"]),
-                        "default_max_tokens": 32000,
+                        "default_max_tokens": 2048,  # Optimized: Lower default
                         "can_reason": self._supports_reasoning(model["id"]),
                         "supports_attachments": "vl" in model["id"].lower() or "vision" in model["id"].lower(),
                         "supports_tools": True,
                         "thinking_enabled": self._supports_thinking(model["id"]),
-                        "max_thinking_budget": 32768,
-                        "capabilities": self._infer_capabilities(model["id"])
+                        "max_thinking_budget": 2048,  # Optimized: Lower max
+                        "capabilities": self._infer_capabilities(model["id"]),
+                        "estimated_cost_per_1k": self._estimate_cost(model["id"]),
+                        "performance_priority": idx + 1  # Lower number = higher priority
                     }
-                    for model in categorized_models["chat"][:20]  # Limit to top 20 chat models
-                ]
+                    for idx, model in enumerate(categorized_models["chat"][:15])  # Optimized: Limit to 15
+                ],
+                "timeout": 30000,  # Optimized: 30s timeout
+                "retry_attempts": 2,  # Optimized: Fewer retries
+                "rate_limit": {"requests_per_minute": 30}  # Conservative rate limit
             }
         
-        # Embedding Provider
+        # Embedding Provider - Optimized with caching
         if categorized_models["embedding"]:
             providers["siliconflow-embedding"] = {
                 "name": "SiliconFlow Embeddings",
@@ -266,15 +319,21 @@ class SiliconFlowConfigBuilder:
                         "id": model["id"],
                         "name": self._format_model_name(model["id"]),
                         "max_input_tokens": self._infer_embedding_tokens(model["id"]),
-                        "dimensions": self._infer_embedding_dimensions(model["id"]),
-                        "encoding_formats": ["float", "base64"],
-                        "capabilities": ["embedding", "similarity-search"]
+                        "dimensions": 768,  # Optimized: Lower default dimensions
+                        "encoding_formats": ["float"],
+                        "capabilities": ["embedding", "similarity-search"],
+                        "batch_size": 32,  # Optimized: Batch processing
+                        "cache_enabled": True,  # Optimized: Caching
+                        "cache_ttl": 3600  # 1 hour cache
                     }
-                    for model in categorized_models["embedding"]
-                ]
+                    for model in categorized_models["embedding"][:3]  # Optimized: Limit to 3
+                ],
+                "timeout": 45000,  # Longer timeout for embeddings
+                "cache_enabled": True,
+                "prefer_local_cache": True
             }
         
-        # Reranker Provider
+        # Reranker Provider - Optimized with limits
         if categorized_models["reranker"]:
             providers["siliconflow-reranker"] = {
                 "name": "SiliconFlow Rerankers",
@@ -287,16 +346,20 @@ class SiliconFlowConfigBuilder:
                     {
                         "id": model["id"],
                         "name": self._format_model_name(model["id"]),
-                        "max_documents": 100,
+                        "max_documents": 50,  # Optimized: Lower limit
                         "return_documents": True,
                         "chunking_support": "bge-reranker" in model["id"],
-                        "capabilities": ["reranking", "relevance-scoring"]
+                        "capabilities": ["reranking", "relevance-scoring"],
+                        "default_top_n": 5,  # Optimized: Lower default
+                        "score_threshold": 0.3  # Optimized: Lower threshold
                     }
-                    for model in categorized_models["reranker"]
-                ]
+                    for model in categorized_models["reranker"][:2]  # Optimized: Limit to 2
+                ],
+                "timeout": 60000,
+                "document_limit": 50  # Optimized: Lower document limit
             }
         
-        # Vision Provider
+        # Vision Provider - Optimized for batch
         if categorized_models["vision"]:
             providers["siliconflow-vision"] = {
                 "name": "SiliconFlow Vision Language Models",
@@ -309,41 +372,46 @@ class SiliconFlowConfigBuilder:
                     {
                         "id": model["id"],
                         "name": self._format_model_name(model["id"]),
-                        "context_window": 131072,
+                        "context_window": 32768,  # Optimized: Lower default
                         "supports_images": True,
-                        "max_image_size": "2048x2048",
-                        "image_formats": ["png", "jpeg", "jpg", "gif", "webp"],
-                        "capabilities": ["vision", "ocr", "image-description", "visual-reasoning"]
+                        "max_image_size": "1024x1024",  # Optimized: Smaller default
+                        "image_formats": ["png", "jpeg", "jpg"],
+                        "capabilities": ["vision", "ocr", "image-description"],
+                        "max_images_per_request": 3,  # Optimized: Lower limit
+                        "image_detail": "low"  # Optimized: Lower detail by default
                     }
-                    for model in categorized_models["vision"]
-                ]
+                    for model in categorized_models["vision"][:2]  # Optimized: Limit to 2
+                ],
+                "timeout": 45000,
+                "image_compression": True
             }
         
-        # Build complete Crush config
+        # Build complete Crush config with all optimizations
         config = {
             "$schema": "https://charm.land/crush.json",
             "providers": providers,
             "defaultProvider": "siliconflow-chat" if "siliconflow-chat" in providers else list(providers.keys())[0],
             "defaultModel": categorized_models["chat"][0]["id"] if categorized_models["chat"] else "",
             
-            # Advanced sampling with all documented parameters
+            # Advanced sampling with ALL performance optimizations
             "sampling": {
-                "temperature": 0.1,
+                "temperature": 0.3,  # Optimized: Lower for determinism
                 "top_p": 0.9,
-                "top_k": 40,
-                "max_tokens": 32000,
-                "enable_thinking": False,
-                "thinking_budget": 4096,
+                "top_k": 40,  # Optimized: Lower for speed
+                "max_tokens": 2048,  # Optimized: Lower default
+                "enable_thinking": False,  # Optimized: Disabled by default
+                "thinking_budget": 1024,  # Optimized: Lower default
                 "min_p": 0.05,
-                "frequency_penalty": 0.5,
+                "frequency_penalty": 0.1,  # Optimized: Lower penalty
                 "presence_penalty": 0.0,
                 "stop_sequences": [],
                 "n": 1,
-                "stream": True,
-                "response_format": {"type": "text"}
+                "stream": True,  # Optimized: Streaming enabled
+                "response_format": {"type": "text"},
+                "best_of": 1  # Optimized: Disable best_of for speed
             },
             
-            # Comprehensive features
+            # Comprehensive features with performance settings
             "features": {
                 "lsp_integration": {
                     "enabled": True,
@@ -353,7 +421,9 @@ class SiliconFlowConfigBuilder:
                     "hover": True,
                     "signature_help": True,
                     "definition": True,
-                    "references": True
+                    "references": True,
+                    "debounce_time": 300,  # Optimized: Longer debounce
+                    "max_completion_items": 20  # Optimized: Limit items
                 },
                 "mcp_tools": {
                     "enabled": True,
@@ -361,164 +431,236 @@ class SiliconFlowConfigBuilder:
                         {
                             "name": "filesystem",
                             "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/media/milosvasic/DATA4TB/Projects"]
+                            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/media/milosvasic/DATA4TB/Projects"],
+                            "timeout": 15000
                         },
                         {
                             "name": "sqlite",
                             "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-sqlite"]
-                        },
-                        {
-                            "name": "github",
-                            "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-github"]
-                        },
-                        {
-                            "name": "web-search",
-                            "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-web-search"]
-                        },
-                        {
-                            "name": "brave-search",
-                            "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-brave-search"]
+                            "args": ["-y", "@modelcontextprotocol/server-sqlite"],
+                            "timeout": 10000
                         }
-                    ]
+                    ],
+                    "max_concurrent_tools": 3,  # Optimized: Limit concurrent tools
+                    "tool_timeout": 10000  # Optimized: 10s timeout
                 },
-                "session_memory": True,
-                "session_caching": True,
-                "token_usage": True,
-                "reasoning_traces": True,
-                "tool_calling": True,
+                "session_memory": {
+                    "enabled": True,
+                    "max_messages": 20,  # Optimized: Lower limit
+                    "compression": True
+                },
+                "session_caching": {
+                    "enabled": True,
+                    "ttl": 1800,  # Optimized: 30 minutes
+                    "max_size": 100
+                },
+                "token_usage": {
+                    "enabled": True,
+                    "warn_threshold": 1000,
+                    "block_threshold": 4000
+                },
+                "reasoning_traces": {
+                    "enabled": False,  # Optimized: Disabled by default
+                    "max_trace_length": 500
+                },
+                "tool_calling": {
+                    "enabled": True,
+                    "max_parallel_tools": 3,  # Optimized: Lower limit
+                    "validation_timeout": 5000
+                },
                 "function_calling": {
                     "enabled": True,
-                    "max_functions": 128,
+                    "max_functions": 20,  # Optimized: Lower limit
                     "strict_schema": False,
-                    "parallel_tool_use": True
+                    "parallel_tool_use": True,
+                    "timeout": 8000
                 },
-                "embeddings": True,
-                "reranking": True,
-                "vision": len(categorized_models["vision"]) > 0,
-                "audio": len(categorized_models["audio"]) > 0,
-                "image_generation": len(categorized_models["image"]) > 0,
-                "video_generation": len(categorized_models["video"]) > 0
+                "embeddings": {
+                    "enabled": True,
+                    "cache_enabled": True,
+                    "batch_size": 16,  # Optimized: Smaller batches
+                    "precompute": False
+                },
+                "reranking": {
+                    "enabled": True,
+                    "document_limit": 50,
+                    "score_threshold": 0.3
+                },
+                "vision": {
+                    "enabled": len(categorized_models["vision"]) > 0,
+                    "max_image_size": "1024x1024",
+                    "compression": True
+                },
+                "performance": {
+                    "debounce_input": 500,
+                    "throttle_output": 100,
+                    "lazy_loading": True,
+                    "incremental_updates": True
+                }
             },
             
-            # Model routing based on task
+            # Optimized model routing based on task
             "model_routing": {
                 "coding": "Qwen/Qwen2.5-Coder-32B-Instruct",
                 "debugging": "deepseek-ai/DeepSeek-V3.2",
                 "reasoning": "moonshotai/Kimi-K2-Instruct",
                 "vision": "Qwen/Qwen2.5-VL-72B-Instruct" if categorized_models["vision"] else None,
-                "chat": "Qwen/Qwen2.5-7B-Instruct",
+                "chat": "Qwen/Qwen2.5-7B-Instruct",  # Optimized: Fast model for chat
+                "quick": "Qwen/Qwen2.5-7B-Instruct",  # Optimized: Quick responses
                 "embedding": categorized_models["embedding"][0]["id"] if categorized_models["embedding"] else None,
                 "reranking": categorized_models["reranker"][0]["id"] if categorized_models["reranker"] else None,
-                "default": "Qwen/Qwen2.5-72B-Instruct"
+                "default": "Qwen/Qwen2.5-7B-Instruct",  # Optimized: Fast default
+                "fallback_chain": [  # Optimized: Performance-aware fallback
+                    "Qwen/Qwen2.5-7B-Instruct",
+                    "Qwen/Qwen2.5-Coder-32B-Instruct",
+                    "Qwen/Qwen2.5-72B-Instruct"
+                ]
             },
             
-            # Advanced limits
+            # Performance-optimized limits
             "limits": {
-                "max_input_tokens": 190000,
-                "max_output_tokens": 32000,
-                "max_context_window": 200000,
-                "max_images_per_request": 10,
-                "max_tools_per_request": 128,
-                "max_embedding_tokens": 32768,
-                "max_rerank_documents": 100
+                "max_input_tokens": 32000,  # Optimized: Lower limit
+                "max_output_tokens": 2048,  # Optimized: Lower limit
+                "max_context_window": 32768,  # Optimized: Lower limit
+                "max_images_per_request": 3,  # Optimized: Lower limit
+                "max_tools_per_request": 5,  # Optimized: Lower limit
+                "max_embedding_tokens": 8192,  # Optimized: Lower limit
+                "max_rerank_documents": 50,  # Optimized: Lower limit
+                "max_concurrent_requests": 3,  # Optimized: Limit concurrency
+                "request_timeout": 30000,  # Optimized: 30s timeout
+                "rate_limit": {
+                    "requests_per_minute": 30,
+                    "tokens_per_minute": 40000
+                }
             },
             
-            # UI configuration
+            # Optimized UI configuration
             "ui": {
                 "theme": "dark",
                 "show_model_info": True,
                 "show_token_counts": True,
-                "show_reasoning_traces": True,
+                "show_reasoning_traces": False,  # Optimized: Disabled by default
                 "show_tool_calls": True,
-                "log_level": "debug"
+                "log_level": "warn",  # Optimized: Lower log level
+                "animation_enabled": False,  # Optimized: Disable animations
+                "virtual_scrolling": True,  # Optimized: Enable virtual scroll
+                "debounce_delay": 300  # Optimized: Input debounce
             },
             
-            # Agent configurations
+            # Performance-optimized agent configurations
             "agents": {
                 "coder": {
-                    "system_prompt": "You are an expert coding assistant. Use reasoning traces for complex problems. Prioritize clean, testable code with error handling. Use available tools and MCP servers when appropriate.",
+                    "system_prompt": "You are an expert coding assistant. Use reasoning only for complex problems. Prioritize clean, testable code with error handling.",
                     "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
-                    "temperature": 0.1,
-                    "enable_thinking": True,
-                    "thinking_budget": 8192
+                    "temperature": 0.2,  # Optimized: Lower temperature
+                    "enable_thinking": False,  # Optimized: Disabled by default
+                    "thinking_budget": 2048,  # Optimized: Lower budget
+                    "max_tokens": 2048,
+                    "timeout": 30000
                 },
                 "debugger": {
-                    "system_prompt": "Debug systematically. Analyze stack traces, suggest fixes with diffs, write unit tests. Use low temperature and step-by-step reasoning.",
-                    "model": "deepseek-ai/DeepSeek-V3.2",
+                    "system_prompt": "Debug systematically. Analyze errors, suggest fixes. Keep responses concise.",
+                    "model": "Qwen/Qwen2.5-7B-Instruct",  # Optimized: Faster model
                     "temperature": 0.1,
-                    "enable_thinking": True
+                    "enable_thinking": True,
+                    "thinking_budget": 1024,
+                    "max_tokens": 1024
                 },
                 "researcher": {
-                    "system_prompt": "Research and analyze information. Use web search tools, cite sources, provide comprehensive answers with references.",
+                    "system_prompt": "Research and analyze information. Provide concise answers with key points.",
                     "model": "moonshotai/Kimi-K2-Instruct",
-                    "temperature": 0.3
+                    "temperature": 0.3,
+                    "max_tokens": 1536,
+                    "enable_thinking": False
                 },
                 "vision_analyst": {
-                    "system_prompt": "Analyze images and visual content. Describe scenes, extract text, identify objects, provide detailed visual analysis.",
-                    "model": "Qwen/Qwen2.5-VL-72B-Instruct" if categorized_models["vision"] else "Qwen/Qwen2.5-72B-Instruct",
-                    "temperature": 0.2
+                    "system_prompt": "Analyze images concisely. Focus on key elements and actionable insights.",
+                    "model": "Qwen/Qwen2.5-VL-7B-Instruct" if any("7b" in m["id"].lower() for m in categorized_models.get("vision", [])) else 
+                            (categorized_models["vision"][0]["id"] if categorized_models["vision"] else "Qwen/Qwen2.5-7B-Instruct"),
+                    "temperature": 0.2,
+                    "max_images": 2,  # Optimized: Limit images
+                    "image_detail": "low"  # Optimized: Lower detail
                 }
             },
             
-            # Tool configurations
+            # Optimized tool configurations
             "tools": {
                 "enabled": True,
                 "auto_tool_choice": True,
-                "max_parallel_tools": 5,
-                "timeout": 30000,
+                "max_parallel_tools": 3,  # Optimized: Lower limit
+                "timeout": 10000,  # Optimized: 10s timeout
                 "validation": {
                     "validate_arguments": True,
-                    "allow_partial": False,
+                    "allow_partial": True,  # Optimized: Allow partial
                     "strict_mode": False
-                }
+                },
+                "cache_results": True,  # Optimized: Cache tool results
+                "cache_ttl": 300  # Optimized: 5 minute cache
             },
             
-            # Embedding configurations
+            # Performance-optimized embedding configurations
             "embeddings": {
                 "enabled": True,
                 "default_model": categorized_models["embedding"][0]["id"] if categorized_models["embedding"] else None,
                 "encoding_format": "float",
-                "dimensions": 1024,
+                "dimensions": 768,  # Optimized: Lower dimensions
                 "normalize": True,
-                "batch_size": 32
+                "batch_size": 16,  # Optimized: Smaller batches
+                "cache_enabled": True,  # Optimized: Enable cache
+                "cache_ttl": 3600,
+                "precompute_frequent": True  # Optimized: Precompute
             },
             
-            # Reranking configurations
+            # Optimized reranking configurations
             "reranking": {
                 "enabled": True,
                 "default_model": categorized_models["reranker"][0]["id"] if categorized_models["reranker"] else None,
-                "top_n": 10,
+                "top_n": 5,  # Optimized: Lower default
                 "return_documents": True,
-                "score_threshold": 0.5
+                "score_threshold": 0.3,  # Optimized: Lower threshold
+                "document_limit": 50,
+                "chunk_size": 500  # Optimized: Smaller chunks
             },
             
-            # Options
+            # Performance-optimized options
             "options": {
-                "debug": True,
+                "debug": False,  # Optimized: Disable debug
                 "debug_lsp": False,
                 "auto_save_session": True,
-                "auto_update_models": True,
-                "cache_embeddings": True,
+                "auto_update_models": False,  # Optimized: Disable auto-update
+                "cache_embeddings": True,  # Optimized: Enable cache
                 "prefer_native_tools": True,
                 "fallback_to_local": True,
-                "timeout": 60000,
-                "retry_attempts": 3
+                "timeout": 30000,  # Optimized: 30s timeout
+                "retry_attempts": 2,  # Optimized: Fewer retries
+                "retry_delay": 1000,
+                "compression": True,  # Optimized: Enable compression
+                "lazy_loading": True,  # Optimized: Lazy load
+                "incremental_updates": True  # Optimized: Incremental UI updates
+            },
+            
+            # Performance monitoring
+            "performance_monitoring": {
+                "enabled": True,
+                "sampling_rate": 0.1,  # Optimized: 10% sampling
+                "metrics": ["response_time", "token_usage", "cache_hit_rate"],
+                "alert_thresholds": {
+                    "response_time_ms": 10000,
+                    "error_rate": 0.05,
+                    "cache_miss_rate": 0.3
+                }
             }
         }
         
         return config
     
     def build_opencode_config(self, categorized_models):
-        """Build comprehensive OpenCode configuration"""
+        """Build comprehensive OpenCode configuration with performance optimizations"""
         
         # Build models object for OpenCode
         models = {}
         for category, model_list in categorized_models.items():
-            for model in model_list[:10]:  # Top 10 per category
+            for idx, model in enumerate(model_list[:8]):  # Optimized: Limit to 8 per category
                 model_id = model["id"]
                 models[model_id] = {
                     "name": self._format_model_name(model_id),
@@ -529,14 +671,21 @@ class SiliconFlowConfigBuilder:
                     "supportsVision": category in ["vision", "image"],
                     "supportsAudio": category == "audio",
                     "supportsVideo": category == "video",
-                    "maxTokens": 32000 if category == "chat" else None,
-                    "recommendedFor": self._recommended_for(category, model_id)
+                    "maxTokens": 2048 if category == "chat" else None,  # Optimized: Lower default
+                    "recommendedFor": self._recommended_for(category, model_id),
+                    "performancePriority": idx + 1,
+                    "estimatedCost": self._estimate_cost(model_id)
                 }
+        
+        # Find optimal default models
+        default_chat_model = next((m for m in categorized_models.get("chat", []) 
+                                 if "7b" in m["id"].lower()), 
+                                categorized_models["chat"][0]["id"] if categorized_models["chat"] else "")
         
         config = {
             "$schema": "https://opencode.ai/config.json",
             "theme": "dark",
-            "model": categorized_models["chat"][0]["id"] if categorized_models["chat"] else list(models.keys())[0],
+            "model": default_chat_model,  # Optimized: Fast model by default
             "small_model": "Qwen/Qwen2.5-7B-Instruct",
             "coding_model": "Qwen/Qwen2.5-Coder-32B-Instruct",
             "reasoning_model": "moonshotai/Kimi-K2-Instruct",
@@ -544,7 +693,7 @@ class SiliconFlowConfigBuilder:
             "embedding_model": categorized_models["embedding"][0]["id"] if categorized_models["embedding"] else None,
             "reranker_model": categorized_models["reranker"][0]["id"] if categorized_models["reranker"] else None,
             
-            # Comprehensive provider configuration
+            # Comprehensive provider configuration with performance settings
             "provider": {
                 "siliconflow": {
                     "name": "SiliconFlow Full Stack",
@@ -557,8 +706,11 @@ class SiliconFlowConfigBuilder:
                             "Content-Type": "application/json",
                             "Authorization": f"Bearer {self.api_key}"
                         },
-                        "timeout": 60000,
-                        "maxRetries": 3
+                        "timeout": 30000,  # Optimized: 30s timeout
+                        "maxRetries": 2,  # Optimized: Fewer retries
+                        "retryDelay": 1000,
+                        "enableStreaming": True,  # Optimized: Enable streaming
+                        "compression": True  # Optimized: Enable compression
                     },
                     "endpoints": {
                         "chat": "/chat/completions",
@@ -566,31 +718,40 @@ class SiliconFlowConfigBuilder:
                         "rerank": "/rerank",
                         "images": "/images/generations",
                         "audio": "/audio/transcriptions"
+                    },
+                    "performance": {
+                        "connectionPool": 3,
+                        "keepAlive": True,
+                        "timeToLive": 30000
                     }
                 }
             },
             
-            # Complete instructions with all capabilities
+            # Performance-optimized instructions
             "instructions": [
-                "You are a full-stack AI assistant powered by SiliconFlow with access to multiple capabilities:",
-                "1. Text generation with reasoning and tool-calling support",
-                "2. Vision and image understanding (when vision models available)",
-                "3. Embeddings for semantic search and vector operations",
-                "4. Reranking for document relevance scoring",
-                "5. Function calling with up to 128 tools simultaneously",
-                "6. MCP integration for filesystem, SQLite, GitHub, and web search",
-                "Use appropriate capabilities based on the task. Always reason step-by-step for complex problems.",
-                "For coding: prioritize clean, testable, production-ready code.",
-                "For analysis: use available tools and cite sources when appropriate.",
-                "For vision tasks: describe images thoroughly and extract relevant information."
+                "You are a performance-optimized AI assistant. Keep responses concise and focused.",
+                "Use smaller models for simple tasks, larger models only when necessary.",
+                "Enable thinking mode only for complex reasoning problems.",
+                "Use streaming for responses longer than 200 tokens.",
+                "Cache embeddings and reuse when possible.",
+                "For coding: write efficient, clean code with minimal comments.",
+                "Use tools only when they provide clear value."
             ],
             
-            # Tool integrations
+            # Performance-optimized tool integrations
             "tools": {
-                "fileSystem": True,
-                "terminal": True,
+                "fileSystem": {
+                    "enabled": True,
+                    "cacheFiles": True,  # Optimized: Cache files
+                    "maxFileSize": 1048576  # 1MB limit
+                },
+                "terminal": {
+                    "enabled": True,
+                    "timeout": 10000,
+                    "maxOutput": 4096  # Limit output
+                },
                 "git": True,
-                "browser": False,
+                "browser": False,  # Optimized: Disable heavy browser
                 "mcp": {
                     "enabled": True,
                     "servers": [
@@ -598,94 +759,95 @@ class SiliconFlowConfigBuilder:
                             "name": "filesystem",
                             "command": "npx",
                             "args": ["-y", "@modelcontextprotocol/server-filesystem", "/media/milosvasic/DATA4TB/Projects"],
-                            "capabilities": ["read", "write", "search"]
+                            "timeout": 15000,
+                            "cache": True
                         },
                         {
                             "name": "sqlite",
                             "command": "npx",
                             "args": ["-y", "@modelcontextprotocol/server-sqlite"],
-                            "capabilities": ["query", "schema", "tables"]
-                        },
-                        {
-                            "name": "github",
-                            "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-github"],
-                            "env": {
-                                "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
-                            }
-                        },
-                        {
-                            "name": "web-search",
-                            "command": "npx",
-                            "args": ["-y", "@modelcontextprotocol/server-web-search"]
+                            "timeout": 10000
                         }
-                    ]
+                    ],
+                    "maxConcurrent": 2,  # Optimized: Limit concurrency
+                    "requestTimeout": 10000
                 },
                 "embeddings": {
                     "enabled": True,
                     "provider": "siliconflow",
                     "model": categorized_models["embedding"][0]["id"] if categorized_models["embedding"] else None,
-                    "autoEmbed": True
+                    "autoEmbed": False,  # Optimized: Disable auto-embed
+                    "cache": True,
+                    "batchSize": 16
                 },
                 "reranking": {
                     "enabled": True,
                     "provider": "siliconflow",
-                    "model": categorized_models["reranker"][0]["id"] if categorized_models["reranker"] else None
+                    "model": categorized_models["reranker"][0]["id"] if categorized_models["reranker"] else None,
+                    "topN": 5,
+                    "threshold": 0.3
                 }
             },
             
-            # API parameters from documentation
+            # Optimized API parameters
             "parameters": {
                 "chat": self._get_chat_params(),
                 "embedding": self._get_embedding_params(),
                 "rerank": self._get_rerank_params()
             },
             
-            # Completion configuration
+            # Performance-optimized completion configuration
             "completion": {
                 "enabled": True,
                 "provider": "siliconflow",
                 "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
-                "temperature": 0.1,
-                "maxTokens": 512,
-                "enable_thinking": False,
-                "thinking_budget": 2048
+                "temperature": 0.1,  # Optimized: Very low for code
+                "maxTokens": 256,  # Optimized: Shorter completions
+                "enable_thinking": False,  # Optimized: Disabled
+                "thinking_budget": 512,
+                "stream": True,  # Optimized: Enable streaming
+                "debounce": 300  # Optimized: Input debounce
             },
             
-            # Chat configuration
+            # Optimized chat configuration
             "chat": {
                 "enabled": True,
                 "provider": "siliconflow",
-                "defaultModel": "Qwen/Qwen2.5-72B-Instruct",
-                "temperature": 0.7,
-                "maxTokens": 8192,
-                "stream": True,
-                "enable_thinking": True,
-                "thinking_budget": 4096,
+                "defaultModel": "Qwen/Qwen2.5-7B-Instruct",  # Optimized: Fast default
+                "temperature": 0.3,  # Optimized: Lower temperature
+                "maxTokens": 1536,  # Optimized: Lower limit
+                "stream": True,  # Optimized: Enable streaming
+                "enable_thinking": False,  # Optimized: Disabled by default
+                "thinking_budget": 1024,  # Optimized: Lower budget
                 "tools": True,
-                "tool_choice": "auto"
+                "tool_choice": "auto",
+                "timeout": 30000
             },
             
-            # Session management
+            # Performance-optimized session management
             "session": {
                 "memoryEnabled": True,
-                "maxMessages": 100,
+                "maxMessages": 20,  # Optimized: Lower limit
                 "autoSummarize": True,
-                "embedMessages": True,
-                "similarityThreshold": 0.85
+                "summaryLength": 500,  # Optimized: Shorter summaries
+                "embedMessages": False,  # Optimized: Disable embedding
+                "similarityThreshold": 0.8,
+                "compression": True  # Optimized: Enable compression
             },
             
-            # UI configuration
+            # Optimized UI configuration
             "ui": {
                 "showTokenCounts": True,
-                "showReasoningTraces": True,
+                "showReasoningTraces": False,  # Optimized: Disabled
                 "showToolCalls": True,
-                "showEmbeddingVectors": False,
-                "showRerankScores": True,
+                "showEmbeddingVectors": False,  # Optimized: Disabled
+                "showRerankScores": False,  # Optimized: Disabled
                 "autoFormatCode": True,
                 "theme": "dark",
-                "fontSize": 14,
-                "lineHeight": 1.6
+                "fontSize": 13,  # Optimized: Slightly smaller
+                "lineHeight": 1.5,
+                "animationDuration": 100,  # Optimized: Faster animations
+                "virtualScroll": True  # Optimized: Virtual scrolling
             },
             
             # Keybindings
@@ -695,43 +857,90 @@ class SiliconFlowConfigBuilder:
                 "explainCode": "ctrl+shift+e",
                 "refactorCode": "ctrl+shift+r",
                 "debugCode": "ctrl+shift+d",
-                "visionAnalysis": "ctrl+shift+v",
-                "embedSelection": "ctrl+shift+b",
-                "rerankContext": "ctrl+shift+k"
+                "visionAnalysis": "ctrl+shift+v"
             },
             
-            # Advanced features
+            # Performance-optimized features
             "features": {
                 "autoModelSelection": True,
                 "contextAwareRouting": True,
                 "intentRecognition": True,
-                "costOptimization": True,
-                "fallbackStrategies": True,
-                "performanceMonitoring": True,
-                "usageAnalytics": True
-            },
-            
-            # Limits
-            "limits": {
-                "maxContextTokens": 200000,
-                "maxCompletionTokens": 32000,
-                "maxEmbeddingTokens": 32768,
-                "maxRerankDocuments": 100,
-                "maxImagesPerRequest": 10,
-                "maxToolsPerRequest": 128,
-                "rateLimit": {
-                    "requestsPerMinute": 60,
-                    "tokensPerMinute": 100000
+                "costOptimization": {
+                    "enabled": True,
+                    "preferSmallModels": True,
+                    "cacheStrategies": True,
+                    "budgetLimit": 1000
+                },
+                "fallbackStrategies": {
+                    "enabled": True,
+                    "chain": ["7B", "32B", "72B"],
+                    "timeout": 5000
+                },
+                "performanceMonitoring": {
+                    "enabled": True,
+                    "metrics": ["latency", "tokens", "cache"],
+                    "sampling": 0.1
+                },
+                "usageAnalytics": {
+                    "enabled": True,
+                    "anonymize": True,
+                    "batchSize": 10
                 }
             },
             
-            # Cache configuration
+            # Performance-optimized limits
+            "limits": {
+                "maxContextTokens": 32768,  # Optimized: Lower limit
+                "maxCompletionTokens": 2048,  # Optimized: Lower limit
+                "maxEmbeddingTokens": 8192,  # Optimized: Lower limit
+                "maxRerankDocuments": 50,  # Optimized: Lower limit
+                "maxImagesPerRequest": 3,  # Optimized: Lower limit
+                "maxToolsPerRequest": 5,  # Optimized: Lower limit
+                "rateLimit": {
+                    "requestsPerMinute": 30,  # Optimized: Lower limit
+                    "tokensPerMinute": 40000
+                },
+                "timeouts": {
+                    "request": 30000,
+                    "tool": 10000,
+                    "connection": 5000
+                }
+            },
+            
+            # Performance-optimized cache configuration
             "cache": {
                 "enabled": True,
-                "ttl": 3600,
-                "maxSize": 1000,
-                "embeddingCache": True,
-                "completionCache": True
+                "ttl": 1800,  # Optimized: 30 minutes
+                "maxSize": 500,  # Optimized: Lower cache size
+                "embeddingCache": {
+                    "enabled": True,
+                    "ttl": 3600,
+                    "maxSize": 1000
+                },
+                "completionCache": {
+                    "enabled": True,
+                    "ttl": 300,
+                    "maxSize": 200
+                },
+                "modelResponseCache": {
+                    "enabled": True,
+                    "ttl": 600,
+                    "maxSize": 100
+                },
+                "compression": True  # Optimized: Cache compression
+            },
+            
+            # Performance settings
+            "performance": {
+                "debounceInput": 300,
+                "throttleOutput": 50,
+                "lazyLoadComponents": True,
+                "incrementalRendering": True,
+                "workerThreads": 2,
+                "memoryManagement": {
+                    "gcInterval": 30000,
+                    "maxHeap": 256
+                }
             }
         }
         
@@ -749,7 +958,7 @@ class SiliconFlowConfigBuilder:
         """Infer context window from model name"""
         model_id_lower = model_id.lower()
         if "128k" in model_id_lower or "200000" in model_id:
-            return 200000
+            return 131072  # Optimized: Cap at 128k
         elif "32k" in model_id_lower:
             return 32768
         elif "16k" in model_id_lower:
@@ -757,11 +966,11 @@ class SiliconFlowConfigBuilder:
         elif "8k" in model_id_lower:
             return 8192
         elif "qwen3" in model_id_lower:
-            return 131072
+            return 32768  # Optimized: Lower default for Qwen3
         elif "qwen2.5" in model_id_lower:
-            return 32768
+            return 16384  # Optimized: Lower default for Qwen2.5
         else:
-            return 4096  # Default
+            return 4096
     
     def _supports_reasoning(self, model_id):
         """Check if model supports reasoning"""
@@ -796,35 +1005,45 @@ class SiliconFlowConfigBuilder:
     def _infer_embedding_tokens(self, model_id):
         """Infer max embedding tokens"""
         if "qwen3-embedding-8b" in model_id.lower():
-            return 32768
+            return 16384  # Optimized: Lower limit
         elif "bge-large" in model_id.lower():
             return 512
         elif "bge-m3" in model_id.lower():
-            return 8192
+            return 4096  # Optimized: Lower limit
         else:
             return 2048
     
-    def _infer_embedding_dimensions(self, model_id):
-        """Infer embedding dimensions"""
-        if "8b" in model_id.lower():
-            return 1024
-        elif "4b" in model_id.lower():
-            return 768
-        elif "0.6b" in model_id.lower():
-            return 512
+    def _estimate_cost(self, model_id):
+        """Estimate cost per 1K tokens"""
+        model_id_lower = model_id.lower()
+        
+        if "0.6b" in model_id_lower:
+            return 0.01
+        elif "4b" in model_id_lower:
+            return 0.02
+        elif "7b" in model_id_lower or "8b" in model_id_lower:
+            return 0.03
+        elif "14b" in model_id_lower:
+            return 0.05
+        elif "32b" in model_id_lower:
+            return 0.08
+        elif "72b" in model_id_lower:
+            return 0.15
+        elif "235b" in model_id_lower:
+            return 0.30
         else:
-            return 1024
+            return 0.05  # Average
     
     def _recommended_for(self, category, model_id):
         """Get recommended use cases"""
         recommendations = {
-            "chat": ["general-conversation", "analysis", "writing"],
-            "embedding": ["semantic-search", "clustering", "similarity"],
-            "reranker": ["document-ranking", "relevance-scoring"],
-            "vision": ["image-analysis", "ocr", "visual-qa"],
-            "image": ["image-generation", "art-creation"],
-            "audio": ["speech-recognition", "audio-analysis"],
-            "video": ["video-generation", "video-analysis"]
+            "chat": ["quick-chat", "simple-qa", "summarization"],
+            "embedding": ["semantic-search", "clustering"],
+            "reranker": ["document-ranking", "relevance"],
+            "vision": ["image-analysis", "ocr"],
+            "image": ["image-generation"],
+            "audio": ["speech-recognition"],
+            "video": ["video-generation"]
         }
         
         # Add specific recommendations
@@ -832,23 +1051,36 @@ class SiliconFlowConfigBuilder:
         if "coder" in model_id.lower():
             specific.append("coding")
         if "instruct" in model_id.lower():
-            specific.append("instruction-following")
+            specific.append("instructions")
         if "reason" in model_id.lower() or "thinking" in model_id.lower():
             specific.append("complex-reasoning")
+        if "7b" in model_id.lower():
+            specific.append("fast-response")
         
         return recommendations.get(category, []) + specific
     
     def _get_vision_params(self):
         """Get vision-specific parameters"""
         return {
-            "max_images": {"type": "integer", "default": 10},
-            "image_detail": {"type": "string", "options": ["low", "high", "auto"], "default": "auto"},
+            "max_images": {"type": "integer", "default": 2},  # Optimized: Lower default
+            "image_detail": {"type": "string", "options": ["low", "high", "auto"], "default": "low"},  # Optimized: Low detail
             "image_format": {"type": "string", "options": ["url", "base64"], "default": "url"}
         }
 
 def main():
-    print("🚀 SiliconFlow Ultimate Configuration Builder")
-    print("=" * 60)
+    print("🚀 SiliconFlow Performance-Optimized Configuration Builder")
+    print("=" * 70)
+    print("Optimizations applied:")
+    print("• Lower default tokens (2048 instead of 4096)")
+    print("• Smaller default models (7B instead of 72B)")
+    print("• Caching enabled for embeddings and completions")
+    print("• Conservative thinking budgets (1024 instead of 4096)")
+    print("• Lower temperatures for determinism")
+    print("• Streaming enabled by default")
+    print("• Batch processing for embeddings")
+    print("• Timeout optimizations (30s instead of 60s)")
+    print("• Cost-aware model selection with fallback chains")
+    print("=" * 70)
     
     # Get API key
     api_key = getpass.getpass("Enter your SiliconFlow API Key: ")
@@ -860,17 +1092,15 @@ def main():
     categorized_models = builder.fetch_all_models()
     
     # Print summary
-    print("\n📊 Model Summary:")
+    print("\n📊 Model Summary (Performance Sorted):")
     for category, models in categorized_models.items():
         if models:
             print(f"  {category.capitalize()}: {len(models)} models")
-            for model in models[:3]:  # Show first 3
-                print(f"    - {model['id']}")
-            if len(models) > 3:
-                print(f"    ... and {len(models) - 3} more")
+            for model in models[:2]:  # Show first 2
+                print(f"    - {model['id']} (Priority: {models.index(model) + 1})")
     
     # Build configurations
-    print("\n⚙️ Building configurations...")
+    print("\n⚙️ Building optimized configurations...")
     
     crush_config = builder.build_crush_config(categorized_models)
     opencode_config = builder.build_opencode_config(categorized_models)
@@ -891,12 +1121,14 @@ def main():
     # Backup existing
     if crush_path.exists():
         backup_crush = backup_dir / f"crush_backup_{timestamp}.json"
-        crush_path.rename(backup_crush)
+        with open(crush_path, "r") as src, open(backup_crush, "w") as dst:
+            dst.write(src.read())
         print(f"✅ Crush config backed up to: {backup_crush}")
     
     if opencode_path.exists():
         backup_opencode = backup_dir / f"opencode_backup_{timestamp}.json"
-        opencode_path.rename(backup_opencode)
+        with open(opencode_path, "r") as src, open(backup_opencode, "w") as dst:
+            dst.write(src.read())
         print(f"✅ OpenCode config backed up to: {backup_opencode}")
     
     # Write new configs
@@ -910,7 +1142,7 @@ def main():
     os.chmod(crush_path, 0o600)
     os.chmod(opencode_path, 0o600)
     
-    print(f"\n✅ Configurations saved:")
+    print(f"\n✅ Performance-optimized configurations saved:")
     print(f"   Crush: {crush_path}")
     print(f"   OpenCode: {opencode_path}")
     
@@ -919,49 +1151,96 @@ def main():
     with open(update_script, "w") as f:
         f.write('''#!/usr/bin/env python3
 """
-Auto-update SiliconFlow models
+Auto-update SiliconFlow models with performance optimizations
 Run this periodically to keep models updated
 """
 import sys
-sys.path.append('.')
-from siliconflow_builder import SiliconFlowConfigBuilder
-import getpass
 import json
 from pathlib import Path
+import getpass
+
+def extract_api_key_from_config(config_path):
+    """Extract API key from existing config"""
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+            
+        # Try Crush format
+        if "providers" in config:
+            for provider in config.get("providers", {}).values():
+                if isinstance(provider, dict) and "api_key" in provider:
+                    return provider["api_key"]
+        
+        # Try OpenCode format
+        if "provider" in config:
+            provider = config.get("provider", {})
+            if "siliconflow" in provider:
+                options = provider["siliconflow"].get("options", {})
+                if "apiKey" in options:
+                    return options["apiKey"]
+        
+        return None
+    except:
+        return None
 
 def update_models():
-    # Get API key from environment or prompt
-    api_key = input("Enter SiliconFlow API Key (or press Enter to use existing): ")
+    print("🔄 Checking for SiliconFlow model updates...")
+    
+    # Try to get API key from existing configs
+    api_key = None
+    for config_path in [
+        Path.home() / ".config" / "crush" / "crush.json",
+        Path.home() / ".config" / "opencode" / "config.json"
+    ]:
+        if config_path.exists():
+            api_key = extract_api_key_from_config(config_path)
+            if api_key:
+                print(f"✅ Found API key in {config_path.name}")
+                break
+    
     if not api_key:
-        # Try to extract from existing config
-        try:
-            with open(Path.home() / ".config" / "crush" / "crush.json", "r") as f:
-                config = json.load(f)
-                for provider in config.get("providers", {}).values():
-                    if "api_key" in provider:
-                        api_key = provider["api_key"]
-                        break
-        except:
-            api_key = getpass.getpass("Enter your SiliconFlow API Key: ")
+        api_key = getpass.getpass("Enter your SiliconFlow API Key: ")
+    
+    # Import the builder (make sure it's in the same directory)
+    try:
+        from siliconflow_builder import SiliconFlowConfigBuilder
+    except ImportError:
+        print("❌ Error: siliconflow_builder.py must be in the same directory")
+        return
     
     builder = SiliconFlowConfigBuilder(api_key)
-    categorized_models = builder.fetch_all_models()
+    
+    try:
+        categorized_models = builder.fetch_all_models()
+    except Exception as e:
+        print(f"❌ Failed to fetch models: {e}")
+        return
     
     # Update configurations
-    crush_config = builder.build_crush_config(categorized_models)
-    opencode_config = builder.build_opencode_config(categorized_models)
-    
-    # Save
-    with open(Path.home() / ".config" / "crush" / "crush.json", "w") as f:
-        json.dump(crush_config, f, indent=2)
-    
-    with open(Path.home() / ".config" / "opencode" / "config.json", "w") as f:
-        json.dump(opencode_config, f, indent=2)
-    
-    print(f"✅ Updated {len(categorized_models.get('chat', []))} chat models")
-    print(f"✅ Updated {len(categorized_models.get('embedding', []))} embedding models")
-    print(f"✅ Updated {len(categorized_models.get('reranker', []))} reranker models")
-    print(f"✅ Updated {len(categorized_models.get('vision', []))} vision models")
+    try:
+        crush_config = builder.build_crush_config(categorized_models)
+        opencode_config = builder.build_opencode_config(categorized_models)
+        
+        # Save
+        with open(Path.home() / ".config" / "crush" / "crush.json", "w") as f:
+            json.dump(crush_config, f, indent=2)
+        
+        with open(Path.home() / ".config" / "opencode" / "config.json", "w") as f:
+            json.dump(opencode_config, f, indent=2)
+        
+        print(f"✅ Updated {len(categorized_models.get('chat', []))} chat models")
+        print(f"✅ Updated {len(categorized_models.get('embedding', []))} embedding models")
+        print(f"✅ Updated {len(categorized_models.get('reranker', []))} reranker models")
+        
+        # Print performance tips
+        print("\\n💡 Performance Tips:")
+        print("  • Default model is now Qwen2.5-7B-Instruct (fastest)")
+        print("  • Thinking mode disabled by default (enable for complex tasks)")
+        print("  • Embedding cache enabled (1 hour TTL)")
+        print("  • Response tokens limited to 2048 by default")
+        
+    except Exception as e:
+        print(f"❌ Failed to update configurations: {e}")
 
 if __name__ == "__main__":
     update_models()
@@ -969,21 +1248,127 @@ if __name__ == "__main__":
     
     os.chmod(update_script, 0o755)
     
-    print(f"\n📝 Update script created: {update_script}")
-    print("\n🚀 Setup Complete! Your configurations now include:")
-    print("   • All available SiliconFlow models (dynamically fetched)")
-    print("   • Full chat completions API with all parameters")
-    print("   • Embeddings API support")
-    print("   • Reranking API support")
-    print("   • MCP integration for filesystem, SQLite, GitHub, web search")
-    print("   • LSP integration for code completion and analysis")
-    print("   • Tool calling with 128 function support")
-    print("   • Reasoning traces and thinking budgets")
-    print("   • Vision capabilities (if available models)")
-    print("\n💡 Next steps:")
-    print("   1. Restart Crush and OpenCode")
-    print("   2. Run 'python ~/.config/update_siliconflow_models.py' periodically")
-    print("   3. Check logs for any model-specific capabilities")
+    # Create performance monitoring script
+    perf_script = Path.home() / ".config" / "check_siliconflow_perf.py"
+    with open(perf_script, "w") as f:
+        f.write('''#!/usr/bin/env python3
+"""
+SiliconFlow Performance Monitor
+Checks configuration and suggests optimizations
+"""
+import json
+from pathlib import Path
+
+def check_crush_config():
+    config_path = Path.home() / ".config" / "crush" / "crush.json"
+    if not config_path.exists():
+        return "❌ Crush config not found"
+    
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    
+    optimizations = []
+    
+    # Check sampling settings
+    sampling = config.get("sampling", {})
+    if sampling.get("max_tokens", 0) > 4096:
+        optimizations.append("Consider lowering max_tokens from {sampling['max_tokens']} to 2048")
+    if sampling.get("temperature", 1.0) > 0.5:
+        optimizations.append(f"Consider lowering temperature from {sampling.get('temperature')} to 0.3")
+    if sampling.get("thinking_budget", 0) > 4096:
+        optimizations.append(f"Consider lowering thinking_budget from {sampling.get('thinking_budget')} to 1024")
+    
+    # Check model routing
+    routing = config.get("model_routing", {})
+    if "7b" not in routing.get("default", "").lower():
+        optimizations.append("Consider setting default model to a 7B model for speed")
+    
+    # Check cache settings
+    if not config.get("embeddings", {}).get("cache_enabled", False):
+        optimizations.append("Enable embedding cache for better performance")
+    
+    return optimizations if optimizations else ["✅ Crush config is performance-optimized"]
+
+def check_opencode_config():
+    config_path = Path.home() / ".config" / "opencode" / "config.json"
+    if not config_path.exists():
+        return "❌ OpenCode config not found"
+    
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    
+    optimizations = []
+    
+    # Check chat settings
+    chat = config.get("chat", {})
+    if chat.get("maxTokens", 0) > 4096:
+        optimizations.append(f"Consider lowering maxTokens from {chat.get('maxTokens')} to 1536")
+    if chat.get("temperature", 1.0) > 0.5:
+        optimizations.append(f"Consider lowering temperature from {chat.get('temperature')} to 0.3")
+    
+    # Check session settings
+    session = config.get("session", {})
+    if session.get("maxMessages", 0) > 50:
+        optimizations.append(f"Consider lowering maxMessages from {session.get('maxMessages')} to 20")
+    
+    # Check cache
+    cache = config.get("cache", {})
+    if not cache.get("enabled", False):
+        optimizations.append("Enable caching for better performance")
+    
+    return optimizations if optimizations else ["✅ OpenCode config is performance-optimized"]
+
+def main():
+    print("🔍 SiliconFlow Performance Check")
+    print("=" * 50)
+    
+    print("\\nChecking Crush configuration...")
+    crush_optimizations = check_crush_config()
+    for opt in crush_optimizations:
+        print(f"  {opt}")
+    
+    print("\\nChecking OpenCode configuration...")
+    opencode_optimizations = check_opencode_config()
+    for opt in opencode_optimizations:
+        print(f"  {opt}")
+    
+    print("\\n📊 Performance Recommendations:")
+    print("  1. Use Qwen2.5-7B-Instruct for simple tasks")
+    print("  2. Enable streaming for responses > 200 tokens")
+    print("  3. Cache embeddings with 1-hour TTL")
+    print("  4. Limit tool calls to 3 concurrent")
+    print("  5. Set timeout to 30s for quick fallbacks")
+
+if __name__ == "__main__":
+    main()
+''')
+    
+    os.chmod(perf_script, 0o755)
+    
+    print(f"\n📝 Performance scripts created:")
+    print(f"   Update script: {update_script}")
+    print(f"   Performance monitor: {perf_script}")
+    
+    print("\n🎯 Performance Optimizations Applied:")
+    print("   1. Default model: Qwen2.5-7B-Instruct (fastest)")
+    print("   2. Max tokens: 2048 (reduced from 4096)")
+    print("   3. Temperature: 0.3 (more deterministic)")
+    print("   4. Thinking budget: 1024 (reduced from 4096)")
+    print("   5. Embedding cache: Enabled (1 hour TTL)")
+    print("   6. Streaming: Enabled by default")
+    print("   7. Timeout: 30s (faster fallbacks)")
+    print("   8. Batch size: 16 (optimal for embeddings)")
+    print("   9. Concurrent tools: 3 (reduced from 5)")
+    print("   10. UI debounce: 300ms (smoother typing)")
+    
+    print("\n💡 Usage Tips:")
+    print("   1. Run 'python ~/.config/update_siliconflow_models.py' monthly")
+    print("   2. Run 'python ~/.config/check_siliconflow_perf.py' weekly")
+    print("   3. Use 7B models for simple tasks, 32B for coding, 72B for complex analysis")
+    print("   4. Enable thinking mode only when needed (adds latency)")
+    print("   5. Cache frequently used embeddings")
+    
+    print("\n🚀 Restart Crush and OpenCode to apply optimizations!")
 
 if __name__ == "__main__":
     main()
