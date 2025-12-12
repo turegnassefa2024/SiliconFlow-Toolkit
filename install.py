@@ -1,173 +1,88 @@
 #!/usr/bin/env python3
+"""
+Enhanced SiliconFlow Configuration Builder with Dynamic Model Discovery
+Automatically discovers all models and capabilities from SiliconFlow API
+"""
+
 import json
-import requests
 import os
 import sys
 from pathlib import Path
 from datetime import datetime
 import getpass
 import shutil
+import logging
+from typing import Dict, List, Optional, Any
 
-class SiliconFlowConfigBuilder:
-    def __init__(self, api_key):
+# Import our new modules
+from siliconflow_client import SiliconFlowAPIClient, SiliconFlowAPIError
+from model_discovery import SiliconFlowModelDiscovery, ModelRegistry, ModelCapabilities
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+class EnhancedSiliconFlowConfigBuilder:
+    """Enhanced configuration builder with dynamic model discovery"""
+
+    def __init__(self, api_key: str):
         self.api_key = api_key
-        self.base_url = "https://api.siliconflow.com/v1"
-        self.headers = {"Authorization": f"Bearer {api_key}"}
-        
-        self.default_chat_models = [
-            "Qwen/Qwen2.5-7B-Instruct",
-            "Qwen/Qwen2.5-14B-Instruct", 
-            "Qwen/Qwen2.5-32B-Instruct",
-            "Qwen/Qwen2.5-72B-Instruct",
-            "Qwen/Qwen3-14B",
-            "Qwen/Qwen3-32B-Instruct",
-            "Qwen/Qwen3-72B-Instruct",
-            "Qwen/Qwen3-235B-A22B-Instruct-2507",
-            "deepseek-ai/DeepSeek-V3.2",
-            "deepseek-ai/DeepSeek-R1",
-            "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-            "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-            "moonshotai/Kimi-K2-Instruct",
-            "zai-org/GLM-4.5",
-            "zai-org/GLM-4.6",
-            "stepfun-ai/Step-2-76B",
-            "baidu/ERNIE-4.5-300B-A47B",
-            "tencent/Hunyuan-A13B-Instruct",
-            "tencent/Hunyuan-MT-7B",
-            "Wan-AI/Wan2.2-I2V-A14B",
-            "Wan-AI/Wan2.2-T2V-A14B"
-        ]
-        
-        self.default_vision_models = [
-            "Qwen/Qwen2.5-VL-7B-Instruct",
-            "Qwen/Qwen2.5-VL-32B-Instruct",
-            "Qwen/Qwen2.5-VL-72B-Instruct",
-            "Qwen/Qwen3-VL-8B-Instruct",
-            "Qwen/Qwen3-VL-8B-Thinking",
-            "Qwen/Qwen3-VL-32B-Instruct",
-            "Qwen/Qwen3-VL-32B-Thinking",
-            "Qwen/Qwen3-VL-235B-A22B-Instruct"
-        ]
-        
-        self.default_audio_models = [
-            "IndexTeam/IndexTTS-2",
-            "fishaudio/fish-speech-1.5",
-            "FunAudioLLM/CosyVoice2-0.5B"
-        ]
-    
-    def fetch_all_models(self):
-        all_models = []
-        
-        print("🔄 Fetching models from SiliconFlow API...")
-        
-        try:
-            response = requests.get(
-                f"{self.base_url}/models",
-                headers=self.headers,
-                timeout=15
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                all_models = data.get("data", [])
-                print(f"✅ Found {len(all_models)} total models from API")
-                
-                if len(all_models) < 5:
-                    print("⚠️  API returned limited models, using documented models")
-                    return self._get_documented_models()
-                else:
-                    return self._categorize_api_models(all_models)
-            else:
-                print(f"⚠️  API returned {response.status_code}, using documented models")
-                return self._get_documented_models()
-                
-        except Exception as e:
-            print(f"⚠️  Error fetching models: {e}, using documented models")
-            return self._get_documented_models()
-    
-    def _categorize_api_models(self, api_models):
-        categorized = {"chat": [], "vision": [], "audio": []}
-        
-        api_model_ids = [m.get("id", "") for m in api_models]
-        
-        for model_id in self.default_chat_models:
-            if any(api_id == model_id for api_id in api_model_ids):
-                categorized["chat"].append({"id": model_id})
-        
-        for model_id in self.default_vision_models:
-            if any(api_id == model_id for api_id in api_model_ids):
-                categorized["vision"].append({"id": model_id})
-        
-        for model_id in self.default_audio_models:
-            if any(api_id == model_id for api_id in api_model_ids):
-                categorized["audio"].append({"id": model_id})
-        
-        return categorized
-    
-    def _get_documented_models(self):
-        categorized = {"chat": [], "vision": [], "audio": []}
-        
-        for model_id in self.default_chat_models:
-            categorized["chat"].append({"id": model_id})
-        
-        for model_id in self.default_vision_models:
-            categorized["vision"].append({"id": model_id})
-        
-        for model_id in self.default_audio_models:
-            categorized["audio"].append({"id": model_id})
-        
-        return categorized
-    
-    def _format_model_name(self, model_id):
-        parts = model_id.split("/")
-        if len(parts) > 1:
-            name = parts[1].replace("-", " ").replace("_", " ")
-            return f"{parts[0]} {name}"
-        return model_id
-    
-    def _infer_context_window(self, model_id):
-        model_id_lower = model_id.lower()
-        if "deepseek" in model_id_lower:
-            return 131072
-        elif "qwen3" in model_id_lower:
-            return 32768
-        elif "qwen2.5" in model_id_lower:
-            return 16384
-        elif "kimi" in model_id_lower or "glm" in model_id_lower:
-            return 32768
-        else:
-            return 4096
-    
-    def build_opencode_config(self, categorized_models):
+        self.discovery = SiliconFlowModelDiscovery(api_key)
+        self.registry: Optional[ModelRegistry] = None
+
+    def initialize_registry(self) -> ModelRegistry:
+        """Initialize and cache the model registry"""
+        if not self.registry:
+            logger.info("Initializing model registry...")
+            self.registry = self.discovery.discover_all_models()
+        return self.registry
+
+    def build_opencode_config(self) -> Dict[str, Any]:
+        """Build OpenCode-compatible configuration"""
+        registry = self.initialize_registry()
+
+        # Create model configurations
         models_dict = {}
-        
-        for category, model_list in categorized_models.items():
-            for model in model_list:
-                model_id = model["id"]
-                model_id_lower = model_id.lower()
-                
-                models_dict[model_id] = {
-                    "name": self._format_model_name(model_id),
-                    "contextWindow": self._infer_context_window(model_id),
-                    "supportsFunctionCalling": category in ["chat", "vision"],
-                    "supportsVision": category == "vision",
-                    "supportsAudio": category == "audio",
-                    "supportsVideo": False
-                }
-        
+
+        # Add chat models
+        for model in registry.chat_models.models:
+            models_dict[model.id] = self._create_opencode_model_config(model)
+
+        # Add vision models
+        for model in registry.vision_models.models:
+            models_dict[model.id] = self._create_opencode_model_config(model)
+
+        # Add audio models
+        for model in registry.audio_models.models:
+            models_dict[model.id] = self._create_opencode_model_config(model)
+
+        # Add video models
+        for model in registry.video_models.models:
+            models_dict[model.id] = self._create_opencode_model_config(model)
+
+        # Determine default model
+        default_model = (
+            registry.chat_models.default_model
+            or registry.vision_models.default_model
+            or "Qwen/Qwen2.5-14B-Instruct"  # fallback
+        )
+
         config = {
             "$schema": "https://opencode.ai/config.json",
             "theme": "dark",
-            "model": "Qwen/Qwen2.5-14B-Instruct",
+            "model": default_model,
             "provider": {
-                "openai": {
-                    "name": "SiliconFlow (OpenAI Compatible)",
-                    "models": models_dict
+                "siliconflow": {
+                    "name": "SiliconFlow",
+                    "apiKey": self.api_key,
+                    "baseURL": "https://api.siliconflow.com/v1",
+                    "models": models_dict,
                 }
             },
-            "instructions": [
-                "You are a helpful AI assistant."
-            ],
+            "instructions": ["You are a helpful AI assistant powered by SiliconFlow."],
             "tools": {
                 "fileSystem": True,
                 "terminal": True,
@@ -175,210 +90,476 @@ class SiliconFlowConfigBuilder:
                 "browser": False,
                 "mcp": True,
                 "embeddings": True,
-                "reranking": True
-            }
+                "reranking": True,
+            },
         }
-        
+
         return config
-    
-    def build_crush_config(self, categorized_models):
+
+    def build_crush_config(self) -> Dict[str, Any]:
+        """Build Crush-compatible configuration"""
+        registry = self.initialize_registry()
+
         providers = {}
-        
-        if categorized_models["chat"]:
+
+        # Chat models provider
+        if registry.chat_models.models:
             providers["siliconflow-chat"] = {
                 "name": "SiliconFlow Chat Models",
                 "type": "openai-compatible",
                 "api_key": self.api_key,
-                "base_url": f"{self.base_url}/chat/completions",
-                "capabilities": ["chat", "reasoning", "tool-calling", "function-calling"],
+                "base_url": "https://api.siliconflow.com/v1/chat/completions",
+                "capabilities": [
+                    "chat",
+                    "reasoning",
+                    "tool-calling",
+                    "function-calling",
+                ],
                 "models": [
-                    {
-                        "id": model["id"],
-                        "name": self._format_model_name(model["id"]),
-                        "context_window": self._infer_context_window(model["id"]),
-                        "supports_mcp": True,
-                        "supports_lsp": True
-                    }
-                    for model in categorized_models["chat"][:20]
+                    self._create_crush_model_config(model)
+                    for model in registry.chat_models.models[
+                        :25
+                    ]  # Limit to prevent config bloat
                 ],
                 "timeout": 30000,
-                "retry_attempts": 2
+                "retry_attempts": 2,
             }
-        
+
+        # Vision models provider
+        if registry.vision_models.models:
+            providers["siliconflow-vision"] = {
+                "name": "SiliconFlow Vision Models",
+                "type": "openai-compatible",
+                "api_key": self.api_key,
+                "base_url": "https://api.siliconflow.com/v1/chat/completions",
+                "capabilities": ["vision", "chat", "tool-calling"],
+                "models": [
+                    self._create_crush_model_config(model)
+                    for model in registry.vision_models.models[:10]
+                ],
+                "timeout": 45000,  # Longer timeout for vision models
+                "retry_attempts": 2,
+            }
+
+        # Audio models provider
+        if registry.audio_models.models:
+            providers["siliconflow-audio"] = {
+                "name": "SiliconFlow Audio Models",
+                "type": "openai-compatible",
+                "api_key": self.api_key,
+                "base_url": "https://api.siliconflow.com/v1/audio/speech",
+                "capabilities": ["audio", "speech"],
+                "models": [
+                    self._create_crush_model_config(model)
+                    for model in registry.audio_models.models[:5]
+                ],
+                "timeout": 60000,  # Audio generation can take longer
+                "retry_attempts": 2,
+            }
+
+        # Video models provider
+        if registry.video_models.models:
+            providers["siliconflow-video"] = {
+                "name": "SiliconFlow Video Models",
+                "type": "openai-compatible",
+                "api_key": self.api_key,
+                "base_url": "https://api.siliconflow.com/v1/videos/submit",
+                "capabilities": ["video"],
+                "models": [
+                    self._create_crush_model_config(model)
+                    for model in registry.video_models.models[:5]
+                ],
+                "timeout": 120000,  # Video generation takes much longer
+                "retry_attempts": 1,
+            }
+
+        # Determine default provider and model
+        default_provider = (
+            "siliconflow-chat"
+            if "siliconflow-chat" in providers
+            else list(providers.keys())[0]
+            if providers
+            else ""
+        )
+        default_model = ""
+        if default_provider and default_provider in providers:
+            if providers[default_provider]["models"]:
+                default_model = providers[default_provider]["models"][0]["id"]
+
         config = {
             "$schema": "https://charm.land/crush.json",
             "providers": providers,
-            "defaultProvider": "siliconflow-chat" if "siliconflow-chat" in providers else "",
-            "defaultModel": categorized_models["chat"][0]["id"] if categorized_models["chat"] else "",
-            
+            "defaultProvider": default_provider,
+            "defaultModel": default_model,
             "sampling": {
                 "temperature": 0.3,
                 "top_p": 0.9,
                 "max_tokens": 2048,
-                "stream": True
-            }
+                "stream": True,
+            },
+            "metadata": {
+                "generated_by": "SiliconFlow Toolkit",
+                "generated_at": datetime.now().isoformat(),
+                "model_count": sum(
+                    len(p.get("models", [])) for p in providers.values()
+                ),
+                "api_version": "v1",
+            },
         }
-        
+
         return config
 
-def safe_backup_and_write(config_path, new_config, backup_dir):
-    config_path = Path(config_path)
-    backup_dir = Path(backup_dir)
-    
+    def _create_opencode_model_config(self, model: ModelCapabilities) -> Dict[str, Any]:
+        """Create OpenCode model configuration"""
+        config = {
+            "name": model.name,
+            "contextWindow": model.context_window,
+            "supportsFunctionCalling": model.supports_function_calling,
+            "supportsVision": model.supports_vision,
+            "supportsAudio": model.supports_audio,
+            "supportsVideo": model.supports_video,
+        }
+
+        if model.max_tokens:
+            config["maxTokens"] = model.max_tokens
+
+        return config
+
+    def _create_crush_model_config(self, model: ModelCapabilities) -> Dict[str, Any]:
+        """Create Crush model configuration"""
+        config = {
+            "id": model.id,
+            "name": model.name,
+            "context_window": model.context_window,
+            "supports_mcp": True,
+            "supports_lsp": True,
+        }
+
+        if model.max_tokens:
+            config["max_tokens"] = model.max_tokens
+
+        if model.supports_function_calling:
+            config["supports_function_calling"] = True
+
+        if model.supports_reasoning:
+            config["supports_reasoning"] = True
+
+        return config
+
+    def merge_configs_smartly(
+        self,
+        existing_config: Dict[str, Any],
+        new_config: Dict[str, Any],
+        config_type: str,
+    ) -> Dict[str, Any]:
+        """Smartly merge existing config with new config"""
+        if config_type == "opencode":
+            return self._merge_opencode_configs(existing_config, new_config)
+        elif config_type == "crush":
+            return self._merge_crush_configs(existing_config, new_config)
+        else:
+            raise ValueError(f"Unknown config type: {config_type}")
+
+    def _merge_opencode_configs(
+        self, existing: Dict[str, Any], new: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Merge OpenCode configurations intelligently"""
+        merged = existing.copy()
+
+        # Preserve user settings
+        user_settings = {
+            "theme": existing.get("theme"),
+            "model": existing.get("model"),
+            "instructions": existing.get("instructions"),
+            "tools": existing.get("tools"),
+        }
+
+        # Update provider configuration
+        if "provider" not in merged:
+            merged["provider"] = {}
+
+        # Merge SiliconFlow provider
+        if "siliconflow" in new.get("provider", {}):
+            merged["provider"]["siliconflow"] = new["provider"]["siliconflow"]
+
+        # Restore user settings
+        for key, value in user_settings.items():
+            if value is not None:
+                merged[key] = value
+
+        # Update schema if needed
+        merged["$schema"] = new.get("$schema", merged.get("$schema"))
+
+        return merged
+
+    def _merge_crush_configs(
+        self, existing: Dict[str, Any], new: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Merge Crush configurations intelligently"""
+        merged = existing.copy()
+
+        # Preserve user settings
+        user_settings = {
+            "defaultProvider": existing.get("defaultProvider"),
+            "defaultModel": existing.get("defaultModel"),
+            "sampling": existing.get("sampling"),
+        }
+
+        # Update providers
+        if "providers" not in merged:
+            merged["providers"] = {}
+
+        # Merge SiliconFlow providers
+        for provider_key, provider_config in new.get("providers", {}).items():
+            merged["providers"][provider_key] = provider_config
+
+        # Restore user settings if they still exist
+        for key, value in user_settings.items():
+            if value is not None:
+                # Only restore if the provider/model still exists
+                if key == "defaultProvider" and value in merged.get("providers", {}):
+                    merged[key] = value
+                elif key == "defaultModel":
+                    # Check if the model exists in any provider
+                    model_exists = False
+                    for provider in merged.get("providers", {}).values():
+                        if any(
+                            m.get("id") == value for m in provider.get("models", [])
+                        ):
+                            model_exists = True
+                            break
+                    if model_exists:
+                        merged[key] = value
+                else:
+                    merged[key] = value
+
+        # Update schema and metadata
+        merged["$schema"] = new.get("$schema", merged.get("$schema"))
+        merged["metadata"] = new.get("metadata", {})
+
+        return merged
+
+
+def safe_backup_and_write(
+    config_path: Path, new_config: Dict[str, Any], backup_dir: Path
+) -> bool:
+    """Safely backup existing config and write new one"""
     backup_dir.mkdir(parents=True, exist_ok=True)
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
+    changed = True
     if config_path.exists():
         try:
             with open(config_path, "r") as f:
                 existing_config = json.load(f)
-            
+
+            # Check if configs are equivalent
             if existing_config == new_config:
-                print(f"⚠️  Config unchanged: {config_path.name}")
+                logger.info(f"✅ Config unchanged: {config_path.name}")
                 return False
-            
+
+            # Create backup
             backup_file = backup_dir / f"{config_path.stem}_backup_{timestamp}.json"
-            
             with open(backup_file, "w") as f:
                 json.dump(existing_config, f, indent=2)
-            
-            print(f"✅ Backed up existing config to: {backup_file}")
-            
+
+            logger.info(f"✅ Backed up existing config to: {backup_file}")
+
         except Exception as e:
-            print(f"⚠️  Could not backup {config_path.name}: {e}")
-            backup_file = backup_dir / f"{config_path.stem}_backup_{timestamp}_corrupted.json"
+            logger.warning(f"⚠️  Could not backup {config_path.name}: {e}")
+            backup_file = (
+                backup_dir / f"{config_path.stem}_backup_{timestamp}_corrupted.json"
+            )
             shutil.copy2(config_path, backup_file)
-            print(f"✅ Copied corrupted config to: {backup_file}")
-    
+            logger.info(f"✅ Copied corrupted config to: {backup_file}")
+
+    # Write new config
     with open(config_path, "w") as f:
         json.dump(new_config, f, indent=2, ensure_ascii=False)
-    
+
     os.chmod(config_path, 0o600)
-    
-    print(f"✅ Updated: {config_path}")
+    logger.info(f"✅ Updated: {config_path}")
     return True
 
-def extract_api_key_from_existing_config(config_path):
-    if not Path(config_path).exists():
+
+def extract_api_key_from_existing_config(config_path: Path) -> Optional[str]:
+    """Extract API key from existing configuration"""
+    if not config_path.exists():
         return None
-    
+
     try:
         with open(config_path, "r") as f:
             config = json.load(f)
-        
+
+        # Check Crush format
         if "providers" in config:
             for provider in config.get("providers", {}).values():
                 if isinstance(provider, dict) and "api_key" in provider:
                     return provider["api_key"]
-        
+
+        # Check OpenCode format
         if "provider" in config:
             provider = config.get("provider", {})
-            if "openai" in provider and "apiKey" in provider["openai"]:
-                return provider["openai"]["apiKey"]
-        
+            if "siliconflow" in provider and "apiKey" in provider["siliconflow"]:
+                return provider["siliconflow"]["apiKey"]
+
         return None
     except:
         return None
 
+
 def main():
-    print("🚀 SiliconFlow Configuration Builder")
+    """Main installation function"""
+    print("🚀 Enhanced SiliconFlow Configuration Builder")
     print("=" * 70)
-    print("This script will update your Crush and OpenCode configurations.")
-    print("Existing configurations will be backed up automatically.")
+    print("This script dynamically discovers all SiliconFlow models and capabilities.")
+    print("Existing configurations will be intelligently merged.")
     print("=" * 70)
-    
+
     backup_dir = Path.home() / ".config" / "siliconflow_backups"
-    
+
     existing_api_key = None
-    
+
+    # Try to find existing API key
     for config_path in [
         Path.home() / ".config" / "crush" / "crush.json",
-        Path.home() / ".config" / "opencode" / "config.json"
+        Path.home() / ".config" / "opencode" / "config.json",
     ]:
         key = extract_api_key_from_existing_config(config_path)
         if key:
             existing_api_key = key
             print(f"✅ Found API key in existing {config_path.name}")
             break
-    
+
     if existing_api_key:
-        use_existing = input(f"Use existing API key? (y/n): ").lower().strip()
-        if use_existing == 'y':
+        use_existing = input("Use existing API key? (y/n): ").lower().strip()
+        if use_existing == "y":
             api_key = existing_api_key
             print("✅ Using existing API key")
         else:
             api_key = getpass.getpass("Enter your SiliconFlow API Key: ")
     else:
         api_key = getpass.getpass("Enter your SiliconFlow API Key: ")
-    
-    builder = SiliconFlowConfigBuilder(api_key)
-    
-    print("\n🔄 Fetching available models...")
-    categorized_models = builder.fetch_all_models()
-    
-    print("\n📊 Available Models Summary:")
-    for category, models in categorized_models.items():
-        if models:
-            print(f"  {category.upper()}: {len(models)} models")
-            for model in models[:3]:
-                print(f"    • {model['id']}")
-            if len(models) > 3:
-                print(f"    • ... and {len(models) - 3} more")
-    
-    print("\n⚙️  Building configurations...")
-    
-    crush_config = builder.build_crush_config(categorized_models)
-    opencode_config = builder.build_opencode_config(categorized_models)
-    
-    crush_path = Path.home() / ".config" / "crush" / "crush.json"
-    opencode_path = Path.home() / ".config" / "opencode" / "config.json"
-    
-    print("\n📁 Saving configurations...")
-    
-    crush_updated = safe_backup_and_write(crush_path, crush_config, backup_dir)
-    opencode_updated = safe_backup_and_write(opencode_path, opencode_config, backup_dir)
-    
-    if not crush_updated and not opencode_updated:
-        print("\n✅ No changes needed - configurations are already up to date!")
-        return
-    
-    print("\n✅ Configuration Summary:")
-    print(f"   Crush: {len(categorized_models.get('chat', []))} chat models")
-    print(f"   OpenCode: {sum(len(v) for v in categorized_models.values())} total models")
-    
-    print("\n🔧 Setup Instructions:")
-    print("   1. Set environment variables:")
-    print(f"      export OPENAI_API_KEY='{api_key}'")
-    print(f"      export OPENAI_BASE_URL='https://api.siliconflow.com/v1'")
-    print("   2. Restart Crush and OpenCode")
-    
-    print("\n💡 Pro Tips:")
-    print("   • Run this script again anytime to update models")
-    print("   • Backups are saved to ~/.config/siliconflow_backups/")
-    print("   • Use Qwen2.5-14B-Instruct for best performance/price balance")
-    print("   • Use DeepSeek-R1 for complex reasoning tasks")
-    
-    env_file = Path.home() / ".config" / "siliconflow_env.sh"
-    with open(env_file, "w") as f:
-        f.write(f"""#!/bin/bash
+
+    try:
+        # Initialize builder
+        builder = EnhancedSiliconFlowConfigBuilder(api_key)
+
+        print("\n🔄 Discovering available models...")
+        registry = builder.initialize_registry()
+
+        print("\n📊 Available Models Summary:")
+        summary = builder.discovery.get_category_summary()
+        for cat_name, cat_info in summary.items():
+            if cat_info["model_count"] > 0:
+                print(f"  {cat_name.upper()}: {cat_info['model_count']} models")
+                if cat_info["default_model"]:
+                    print(f"    Default: {cat_info['default_model']}")
+
+        print("\n⚙️  Building configurations...")
+
+        crush_config = builder.build_crush_config()
+        opencode_config = builder.build_opencode_config()
+
+        crush_path = Path.home() / ".config" / "crush" / "crush.json"
+        opencode_path = Path.home() / ".config" / "opencode" / "config.json"
+
+        print("\n📁 Saving configurations...")
+
+        crush_updated = False
+        opencode_updated = False
+
+        # Handle Crush config
+        if crush_path.exists():
+            try:
+                with open(crush_path, "r") as f:
+                    existing_crush = json.load(f)
+                merged_crush = builder.merge_configs_smartly(
+                    existing_crush, crush_config, "crush"
+                )
+                crush_updated = safe_backup_and_write(
+                    crush_path, merged_crush, backup_dir
+                )
+            except Exception as e:
+                logger.warning(f"Failed to merge Crush config: {e}")
+                crush_updated = safe_backup_and_write(
+                    crush_path, crush_config, backup_dir
+                )
+        else:
+            crush_updated = safe_backup_and_write(crush_path, crush_config, backup_dir)
+
+        # Handle OpenCode config
+        if opencode_path.exists():
+            try:
+                with open(opencode_path, "r") as f:
+                    existing_opencode = json.load(f)
+                merged_opencode = builder.merge_configs_smartly(
+                    existing_opencode, opencode_config, "opencode"
+                )
+                opencode_updated = safe_backup_and_write(
+                    opencode_path, merged_opencode, backup_dir
+                )
+            except Exception as e:
+                logger.warning(f"Failed to merge OpenCode config: {e}")
+                opencode_updated = safe_backup_and_write(
+                    opencode_path, opencode_config, backup_dir
+                )
+        else:
+            opencode_updated = safe_backup_and_write(
+                opencode_path, opencode_config, backup_dir
+            )
+
+        if not crush_updated and not opencode_updated:
+            print("\n✅ No changes needed - configurations are already up to date!")
+            return
+
+        print("\n✅ Configuration Summary:")
+        print(
+            f"   Crush: {crush_config.get('metadata', {}).get('model_count', 0)} models configured"
+        )
+        print(
+            f"   OpenCode: {len(opencode_config.get('provider', {}).get('siliconflow', {}).get('models', {}))} models configured"
+        )
+
+        print("\n🔧 Setup Instructions:")
+        print("   1. Set environment variables:")
+        print(f"      export OPENAI_API_KEY='{api_key}'")
+        print(f"      export OPENAI_BASE_URL='https://api.siliconflow.com/v1'")
+        print("   2. Restart Crush and OpenCode")
+
+        print("\n💡 Pro Tips:")
+        print("   • Run this script again anytime to update models")
+        print("   • Backups are saved to ~/.config/siliconflow_backups/")
+        print("   • Use Qwen2.5-14B-Instruct for best performance/price balance")
+        print("   • Use DeepSeek-R1 for complex reasoning tasks")
+
+        # Create environment script
+        env_file = Path.home() / ".config" / "siliconflow_env.sh"
+        with open(env_file, "w") as f:
+            f.write(f"""#!/bin/bash
 # SiliconFlow Environment Variables
 export OPENAI_API_KEY='{api_key}'
 export OPENAI_BASE_URL='https://api.siliconflow.com/v1'
 echo "✅ SiliconFlow environment variables set"
 """)
-    
-    os.chmod(env_file, 0o755)
-    print(f"\n📝 Environment script created: {env_file}")
-    print(f"   Run: source {env_file}")
+
+        os.chmod(env_file, 0o755)
+        print(f"\n📝 Environment script created: {env_file}")
+        print(f"   Run: source {env_file}")
+
+    except SiliconFlowAPIError as e:
+        logger.error(f"SiliconFlow API Error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print("\n\n❌ Installation cancelled by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
         sys.exit(1)
