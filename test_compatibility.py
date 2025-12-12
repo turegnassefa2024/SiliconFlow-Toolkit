@@ -235,10 +235,32 @@ def test_config_merging():
     print("✅ Configuration merging tests passed!")
 
 
+def test_command_line_flags():
+    """Test command-line flag parsing"""
+    print("\n🏁 Testing command-line flag parsing...")
+
+    import subprocess
+    import sys
+
+    # Test --help flag
+    result = subprocess.run(
+        [sys.executable, "install.py", "--help"],
+        capture_output=True,
+        text=True,
+        cwd=".",
+    )
+    assert result.returncode == 0, "Help command should succeed"
+    assert "OpenCode" in result.stdout, "Help should mention OpenCode"
+    assert "Crush" in result.stdout, "Help should mention Crush"
+
+    print("✅ Command-line flag parsing tests passed!")
+
+
 if __name__ == "__main__":
     success = test_config_generation()
     if success:
         test_config_merging()
+        test_command_line_flags()
         print("\n🎉 All compatibility tests passed!")
     else:
         print("\n❌ Some tests failed!")

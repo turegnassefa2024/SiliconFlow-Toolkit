@@ -3,7 +3,10 @@
 ## Build/Lint/Test Commands
 
 ### Installation & Setup
-- **Install**: `./install` or `./install.sh`
+- **Install (both platforms)**: `./install` or `./install.sh`
+- **Install (OpenCode only)**: `./install --opencode`
+- **Install (Crush only)**: `./install --crush`
+- **Force reinstall**: `./install --force`
 - **Update tools**: `./update_tools.sh`
 - **Verify setup**: `python3 ~/.config/check_siliconflow_perf.py`
 
@@ -31,6 +34,12 @@
 - **String formatting**: Use f-strings for dynamic content
 - **Error handling**: Use try/except blocks with specific exception types
 - **Docstrings**: Use Google-style docstrings with comprehensive descriptions
+
+### Git and Version Control
+- **.gitignore**: Comprehensive ignore patterns for temporary files, cache, and build artifacts
+- **Commit messages**: Use clear, descriptive commit messages
+- **Branch naming**: Use descriptive branch names (feature/, bugfix/, etc.)
+- **File permissions**: Scripts should have executable permissions (0o755)
 
 ### Code Structure
 - **Architecture**: Class-based with clear separation of concerns

@@ -27,9 +27,24 @@ A comprehensive, enterprise-grade toolkit for integrating SiliconFlow AI models 
    ./install
    ```
 
-2. **Enter your SiliconFlow API key** when prompted
+2. **Choose installation target** (optional):
+   ```bash
+   # Install for both OpenCode and Crush (default)
+   ./install
 
-3. **Verify installation**:
+   # Install only for OpenCode
+   ./install --opencode
+
+   # Install only for Crush
+   ./install --crush
+
+   # Force reinstallation (overwrite existing configs)
+   ./install --force
+   ```
+
+3. **Enter your SiliconFlow API key** when prompted
+
+4. **Verify installation**:
    ```bash
    python3 ~/.config/check_siliconflow_perf.py
    ```
@@ -308,14 +323,42 @@ python3 install.py
 ### Development Setup
 
 ```bash
-# Install dependencies
+# Clone the repository
+git clone <repository-url>
+cd siliconflow-toolkit
+
+# Install dependencies (requests is the only external dependency)
 pip install requests
 
 # Run tests
 python3 test_siliconflow.py
+python3 test_compatibility.py
 
-# Format code
-# (Add your preferred formatter)
+# Format code (using your preferred formatter)
+# black . && isort .
+
+# Check for any untracked temporary files
+git status --ignored
+```
+
+### File Structure
+
+```
+siliconflow-toolkit/
+├── .gitignore              # Git ignore patterns for temp files
+├── README.md               # Main documentation
+├── API_REFERENCE.md        # Technical API documentation
+├── AGENTS.md              # Agent development guidelines
+├── LICENSE                 # MIT license
+├── install.py             # Main installation script
+├── siliconflow_client.py  # API client implementation
+├── model_discovery.py     # Dynamic model discovery
+├── test_siliconflow.py    # Unit tests
+├── test_compatibility.py  # Compatibility tests
+├── fix_crush_config.py    # Configuration fixer
+├── sync.sh                # Config synchronization
+├── update_tools.sh        # Tool updates
+└── install.sh             # Installation wrapper
 ```
 
 ## 📄 License

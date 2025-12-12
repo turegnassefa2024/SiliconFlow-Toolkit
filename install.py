@@ -7,6 +7,7 @@ Automatically discovers all models and capabilities from SiliconFlow API
 import json
 import os
 import sys
+import argparse
 from pathlib import Path
 from datetime import datetime
 import getpass
@@ -410,11 +411,62 @@ def extract_api_key_from_existing_config(config_path: Path) -> Optional[str]:
         return None
 
 
+def parse_arguments():
+    """Parse command-line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Enhanced SiliconFlow Configuration Builder",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                    # Install for both OpenCode and Crush
+  %(prog)s --opencode         # Install only for OpenCode
+  %(prog)s --crush            # Install only for Crush
+  %(prog)s --opencode --crush # Install for both (same as default)
+        """,
+    )
+
+    parser.add_argument(
+        "--opencode",
+        action="store_true",
+        help="Install configuration for OpenCode only",
+    )
+
+    parser.add_argument(
+        "--crush", action="store_true", help="Install configuration for Crush only"
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force installation even if configurations exist",
+    )
+
+    args = parser.parse_args()
+
+    # If neither flag is specified, install for both
+    if not args.opencode and not args.crush:
+        args.opencode = True
+        args.crush = True
+
+    return args
+
+
 def main():
     """Main installation function"""
+    args = parse_arguments()
+
     print("🚀 Enhanced SiliconFlow Configuration Builder")
     print("=" * 70)
-    print("This script dynamically discovers all SiliconFlow models and capabilities.")
+
+    platforms = []
+    if args.opencode:
+        platforms.append("OpenCode")
+    if args.crush:
+        platforms.append("Crush")
+
+    platform_text = " and ".join(platforms)
+    print(f"This script dynamically discovers all SiliconFlow models and capabilities.")
+    print(f"Installing for: {platform_text}")
     print("Existing configurations will be intelligently merged.")
     print("=" * 70)
 
@@ -460,8 +512,11 @@ def main():
 
         print("\n⚙️  Building configurations...")
 
-        crush_config = builder.build_crush_config()
-        opencode_config = builder.build_opencode_config()
+        configs_to_build = []
+        if args.crush:
+            configs_to_build.append(("crush", builder.build_crush_config()))
+        if args.opencode:
+            configs_to_build.append(("opencode", builder.build_opencode_config()))
 
         crush_path = Path.home() / ".config" / "crush" / "crush.json"
         opencode_path = Path.home() / ".config" / "opencode" / "config.json"
@@ -471,63 +526,99 @@ def main():
         crush_updated = False
         opencode_updated = False
 
-        # Handle Crush config
-        if crush_path.exists():
-            try:
-                with open(crush_path, "r") as f:
-                    existing_crush = json.load(f)
-                merged_crush = builder.merge_configs_smartly(
-                    existing_crush, crush_config, "crush"
-                )
-                crush_updated = safe_backup_and_write(
-                    crush_path, merged_crush, backup_dir
-                )
-            except Exception as e:
-                logger.warning(f"Failed to merge Crush config: {e}")
-                crush_updated = safe_backup_and_write(
-                    crush_path, crush_config, backup_dir
-                )
-        else:
-            crush_updated = safe_backup_and_write(crush_path, crush_config, backup_dir)
+        for config_type, config in configs_to_build:
+            if config_type == "crush":
+                config_path = crush_path
+                config_name = "Crush"
+            else:  # opencode
+                config_path = opencode_path
+                config_name = "OpenCode"
 
-        # Handle OpenCode config
-        if opencode_path.exists():
-            try:
-                with open(opencode_path, "r") as f:
-                    existing_opencode = json.load(f)
-                merged_opencode = builder.merge_configs_smartly(
-                    existing_opencode, opencode_config, "opencode"
-                )
-                opencode_updated = safe_backup_and_write(
-                    opencode_path, merged_opencode, backup_dir
-                )
-            except Exception as e:
-                logger.warning(f"Failed to merge OpenCode config: {e}")
-                opencode_updated = safe_backup_and_write(
-                    opencode_path, opencode_config, backup_dir
-                )
-        else:
-            opencode_updated = safe_backup_and_write(
-                opencode_path, opencode_config, backup_dir
-            )
+            if config_path.exists() and not args.force:
+                try:
+                    with open(config_path, "r") as f:
+                        existing_config = json.load(f)
+                    merged_config = builder.merge_configs_smartly(
+                        existing_config, config, config_type
+                    )
+                    if config_type == "crush":
+                        crush_updated = safe_backup_and_write(
+                            config_path, merged_config, backup_dir
+                        )
+                    else:
+                        opencode_updated = safe_backup_and_write(
+                            config_path, merged_config, backup_dir
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to merge {config_name} config: {e}")
+                    if config_type == "crush":
+                        crush_updated = safe_backup_and_write(
+                            config_path, config, backup_dir
+                        )
+                    else:
+                        opencode_updated = safe_backup_and_write(
+                            config_path, config, backup_dir
+                        )
+            else:
+                if config_type == "crush":
+                    crush_updated = safe_backup_and_write(
+                        config_path, config, backup_dir
+                    )
+                else:
+                    opencode_updated = safe_backup_and_write(
+                        config_path, config, backup_dir
+                    )
 
-        if not crush_updated and not opencode_updated:
+        expected_updates = args.crush + args.opencode  # Count of True values
+        actual_updates = (crush_updated if args.crush else 0) + (
+            opencode_updated if args.opencode else 0
+        )
+
+        if actual_updates == 0:
             print("\n✅ No changes needed - configurations are already up to date!")
             return
 
         print("\n✅ Configuration Summary:")
-        print(
-            f"   Crush: {crush_config.get('metadata', {}).get('model_count', 0)} models configured"
-        )
-        print(
-            f"   OpenCode: {len(opencode_config.get('provider', {}).get('siliconflow', {}).get('models', {}))} models configured"
-        )
+        if args.crush and crush_updated:
+            crush_config = next(
+                (
+                    config
+                    for config_type, config in configs_to_build
+                    if config_type == "crush"
+                ),
+                None,
+            )
+            if crush_config:
+                print(
+                    f"   Crush: {crush_config.get('metadata', {}).get('model_count', 0)} models configured"
+                )
+        if args.opencode and opencode_updated:
+            opencode_config = next(
+                (
+                    config
+                    for config_type, config in configs_to_build
+                    if config_type == "opencode"
+                ),
+                None,
+            )
+            if opencode_config:
+                print(
+                    f"   OpenCode: {len(opencode_config.get('provider', {}).get('siliconflow', {}).get('models', {}))} models configured"
+                )
 
         print("\n🔧 Setup Instructions:")
         print("   1. Set environment variables:")
         print(f"      export OPENAI_API_KEY='{api_key}'")
         print(f"      export OPENAI_BASE_URL='https://api.siliconflow.com/v1'")
-        print("   2. Restart Crush and OpenCode")
+
+        restart_instructions = []
+        if args.crush:
+            restart_instructions.append("Crush")
+        if args.opencode:
+            restart_instructions.append("OpenCode")
+
+        if restart_instructions:
+            print(f"   2. Restart {' and '.join(restart_instructions)}")
 
         print("\n💡 Pro Tips:")
         print("   • Run this script again anytime to update models")

@@ -4,6 +4,7 @@ This document provides comprehensive documentation for the SiliconFlow Toolkit A
 
 ## Table of Contents
 
+- [Installation](#installation)
 - [SiliconFlowAPIClient](#siliconflowapiclient)
 - [Model Discovery](#model-discovery)
 - [Configuration Builder](#configuration-builder)
@@ -11,6 +12,44 @@ This document provides comprehensive documentation for the SiliconFlow Toolkit A
 - [Data Models](#data-models)
 - [Error Handling](#error-handling)
 - [Examples](#examples)
+
+## Installation
+
+The SiliconFlow Toolkit can be installed for specific platforms using command-line flags:
+
+```bash
+# Install for both OpenCode and Crush (default)
+./install
+
+# Install only for OpenCode
+./install --opencode
+
+# Install only for Crush
+./install --crush
+
+# Force reinstallation (overwrite existing configurations)
+./install --force
+```
+
+### Command-Line Options
+
+- `--opencode`: Install configuration for OpenCode only
+- `--crush`: Install configuration for Crush only
+- `--force`: Force installation even if configurations already exist
+- `--help`: Show help message and usage examples
+
+### Development Setup
+
+For development and testing, clone the repository and set up the environment:
+
+```bash
+git clone <repository-url>
+cd siliconflow-toolkit
+
+# The .gitignore file excludes temporary files, cache directories,
+# and other artifacts that shouldn't be committed to version control
+# Check ignored files with: git status --ignored
+```
 
 ## SiliconFlowAPIClient
 
