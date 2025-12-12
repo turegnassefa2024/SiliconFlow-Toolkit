@@ -5,7 +5,7 @@
 To configure OpenCode and Charm for SiliconFlow provider run: 
 
 ```bash
-python3 install.py
+./install
 ```
 
 Follow the instructions, enter your API key when prompted.
