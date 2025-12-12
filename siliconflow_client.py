@@ -426,7 +426,7 @@ class SiliconFlowAPIClient:
         # Models that are explicitly for other purposes should not be marked as chat
         specialized_keywords = [
             "embedding", "rerank", "tts", "speech", "audio", "video",
-            "t2v", "i2v", "flux", "vl", "vision", "visual", "multimodal"
+            "t2v", "i2v", "flux", "vl", "vision", "visual", "multimodal", "image"
         ]
         
         # Check if model is specialized (has keywords for non-chat tasks)
